@@ -8,10 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
-
-	"golang.org/x/net/http/httpguts"
 
 	quic "github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/internal/protocol"
@@ -36,7 +35,7 @@ func newRequestWriter(headerStream quic.Stream) *requestWriter {
 	return rw
 }
 
-func (w *requestWriter) WriteRequest(req *http.Request, dataStreamID protocol.StreamID, endStream, requestGzip bool, priority *http2.PriorityParam) error {
+func (w *requestWriter) WriteRequest(req *http.Request, dataStreamID protocol.StreamID, endStream, requestGzip bool) error {
 	// TODO: add support for trailers
 	// TODO: add support for gzip compression
 	// TODO: write continuation frames, if the header frame is too long
@@ -51,16 +50,8 @@ func (w *requestWriter) WriteRequest(req *http.Request, dataStreamID protocol.St
 		EndHeaders:    true,
 		EndStream:     endStream,
 		BlockFragment: w.hbuf.Bytes(),
-		Priority:      *priority,
+		Priority:      http2.PriorityParam{Weight: 0xff},
 	})
-}
-
-func (w *requestWriter) writePriority(dataStreamID protocol.StreamID, priority *http2.PriorityParam) error {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	h2framer := http2.NewFramer(w.headerStream, nil)
-	return h2framer.WritePriority(uint32(dataStreamID), *priority)
 }
 
 // the rest of this files is copied from http2.Transport

@@ -55,9 +55,6 @@ var defaultQuicConfig = &quic.Config{
 	KeepAlive:                     true,
 	CacheHandshake:                false,
 	CreatePaths:                   false,
-	BindAddr:                      "0.0.0.0",
-	PathScheduler:                 "LowLatency",
-	StreamScheduler:               "RoundRobin",
 }
 
 // newClient creates a new client
@@ -148,26 +145,8 @@ func (c *client) handleHeaderStream() {
 	close(c.headerErrored)
 }
 
-// RoundTrip executes a request and returns a response
+// Roundtrip executes a request and returns a response
 func (c *client) RoundTrip(req *http.Request) (*http.Response, error) {
-	return c.RoundTripPriority(req, nil)
-}
-
-// RoundTrip executes a request and returns a response
-func (c *client) RoundTripPriority(req *http.Request, priority *http2.PriorityParam) (*http.Response, error) {
-	// Default priority (RFC7540)
-	if priority == nil {
-		priority = &http2.PriorityParam{
-			Weight:    0x0f,
-			StreamDep: 0x0,
-			Exclusive: false,
-		}
-	}
-
-	return c.roundTrip(req, priority)
-}
-
-func (c *client) roundTrip(req *http.Request, priority *http2.PriorityParam) (*http.Response, error) {
 	// TODO: add port to address, if it doesn't have one
 	if req.URL.Scheme != "https" {
 		return nil, errors.New("quic http2: unsupported scheme")
@@ -202,8 +181,7 @@ func (c *client) roundTrip(req *http.Request, priority *http2.PriorityParam) (*h
 	}
 	// TODO: add support for trailers
 	endStream := !hasBody
-
-	err = c.requestWriter.WriteRequest(req, dataStream.StreamID(), endStream, requestedGzip, priority)
+	err = c.requestWriter.WriteRequest(req, dataStream.StreamID(), endStream, requestedGzip)
 	if err != nil {
 		_ = c.CloseWithError(err)
 		return nil, err
@@ -294,35 +272,6 @@ func (c *client) CloseWithError(e error) error {
 
 func (c *client) Close() error {
 	return c.CloseWithError(nil)
-}
-
-// Writes a priority frame on the header stream
-func (c *client) writePriority(dataStream protocol.StreamID, priority *http2.PriorityParam) error {
-	c.dialOnce.Do(func() {
-		c.handshakeErr = c.dial()
-	})
-
-	if c.handshakeErr != nil {
-		return c.handshakeErr
-	}
-
-	if c.requestWriter != nil {
-		return c.requestWriter.writePriority(dataStream, priority)
-	}
-	return fmt.Errorf("quic http2: requestWriter called while it was closed")
-}
-
-func (c *client) openIdleStream() (protocol.StreamID, error) {
-	c.dialOnce.Do(func() {
-		c.handshakeErr = c.dial()
-	})
-
-	if c.handshakeErr != nil {
-		return 0, c.handshakeErr
-	}
-
-	s, err := c.session.OpenStreamSync()
-	return s.StreamID(), err
 }
 
 // copied from net/transport.go

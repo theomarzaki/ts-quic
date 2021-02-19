@@ -17,8 +17,6 @@ import (
 
 	_ "net/http/pprof"
 
-	quic "github.com/lucas-clemente/quic-go"
-
 	"github.com/lucas-clemente/quic-go/h2quic"
 	"github.com/lucas-clemente/quic-go/internal/utils"
 )
@@ -123,25 +121,17 @@ func main() {
 	certPath := flag.String("certpath", getBuildDir(), "certificate directory")
 	www := flag.String("www", "/var/www", "www data")
 	tcp := flag.Bool("tcp", false, "also listen on TCP")
-	pathScheduler := flag.String("ps", "LowLatency", "path scheduler")
-	streamScheduler := flag.String("ss", "RoundRobin", "stream scheduler")
 	flag.Parse()
 
 	if *verbose {
 		utils.SetLogLevel(utils.LogLevelDebug)
 	} else {
-		//utils.SetLogLevel(utils.LogLevelInfo)
-		utils.SetLogLevel(utils.LogLevelNothing)
+		utils.SetLogLevel(utils.LogLevelInfo)
 	}
-	//utils.SetLogTimeFormat("")
+	utils.SetLogTimeFormat("")
 
 	certFile := *certPath + "/fullchain.pem"
 	keyFile := *certPath + "/privkey.pem"
-
-	quicConfig := &quic.Config{
-		PathScheduler:   *pathScheduler,
-		StreamScheduler: *streamScheduler,
-	}
 
 	http.Handle("/", http.FileServer(http.Dir(*www)))
 
@@ -156,9 +146,9 @@ func main() {
 		go func() {
 			var err error
 			if *tcp {
-				err = h2quic.ListenAndServe(bCap, certFile, keyFile, nil, quicConfig)
+				err = h2quic.ListenAndServe(bCap, certFile, keyFile, nil)
 			} else {
-				err = h2quic.ListenAndServeQUIC(bCap, certFile, keyFile, nil, quicConfig)
+				err = h2quic.ListenAndServeQUIC(bCap, certFile, keyFile, nil)
 			}
 			if err != nil {
 				fmt.Println(err)

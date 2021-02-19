@@ -17,9 +17,8 @@ var _ = Describe("Streams Map", func() {
 	)
 
 	var (
-		m               *streamsMap
-		mockCpm         *mocks.MockConnectionParametersManager
-		streamScheduler *streamScheduler
+		m       *streamsMap
+		mockCpm *mocks.MockConnectionParametersManager
 	)
 
 	setNewStreamsMap := func(p protocol.Perspective) {
@@ -28,9 +27,7 @@ var _ = Describe("Streams Map", func() {
 		mockCpm.EXPECT().GetMaxOutgoingStreams().AnyTimes().Return(uint32(maxOutgoingStreams))
 		mockCpm.EXPECT().GetMaxIncomingStreams().AnyTimes().Return(uint32(maxIncomingStreams))
 
-		streamScheduler = newStreamScheduler()
-
-		m = newStreamsMap(nil, p, mockCpm, streamScheduler)
+		m = newStreamsMap(nil, p, mockCpm)
 		m.newStream = func(id protocol.StreamID) *stream {
 			return newStream(id, nil, nil, nil)
 		}

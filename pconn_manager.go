@@ -81,47 +81,6 @@ func (pcm *pconnManager) setup(pconnArg net.PacketConn, listenAddr net.Addr) err
 	return nil
 }
 
-// Setup the pconn_manager and the pconnAny connection
-func (pcm *pconnManager) newSetup(pconnArg net.PacketConn, listenAddr net.IP) error {
-	pcm.pconns = make(map[string]net.PacketConn)
-	pcm.localAddrs = make([]net.UDPAddr, 0)
-	pcm.rcvRawPackets = make(chan *receivedRawPacket)
-	pcm.changePaths = make(chan struct{}, 1)
-	pcm.closeConns = make(chan struct{}, 1)
-	pcm.closed = make(chan struct{}, 1)
-	pcm.errorConn = make(chan error, 1) // Made non-blocking for tests
-	pcm.timer = time.NewTimer(0)
-
-	if pconnArg == nil {
-		// XXX (QDC): waiting for native support of SO_REUSEADDR in go...
-		//var listenAddrStr string
-		//if listenAddr == nil {
-		//	listenAddrStr = "[::]:0"
-		//} else {
-		//	listenAddrStr = listenAddr.String()
-		//}
-		pconn, err := net.ListenUDP("udp", &net.UDPAddr{IP: listenAddr, Port: 0})
-		// pconn, err := reuse.ListenPacket("udp", listenAddrStr)
-		if err != nil {
-			utils.Errorf("pconn_manager: %v", err)
-			return err
-		}
-		pcm.pconnAny = pconn
-	} else {
-		// FIXME Update localAddrs
-		pcm.pconnAny = pconnArg
-	}
-
-	if utils.Debug() {
-		utils.Debugf("Created pconn_manager, any on %s", pcm.pconnAny.LocalAddr().String())
-	}
-
-	// Run the pconnManager
-	go pcm.run()
-
-	return nil
-}
-
 func (pcm *pconnManager) listen(pconn net.PacketConn) {
 	var err error
 
@@ -241,7 +200,7 @@ func (pcm *pconnManager) createPconns() error {
 	}
 	for _, i := range ifaces {
 		// TODO (QDC): do this in a generic way
-		if !strings.Contains(i.Name, "eth") && !strings.Contains(i.Name, "rmnet") && !strings.Contains(i.Name, "wlan") && !strings.Contains(i.Name, "mbb") {
+		if !strings.Contains(i.Name, "eth") && !strings.Contains(i.Name, "rmnet") && !strings.Contains(i.Name, "wlan") {
 			continue
 		}
 		addrs, err := i.Addrs()

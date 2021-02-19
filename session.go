@@ -58,9 +58,9 @@ type session struct {
 	version      protocol.VersionNumber
 	config       *Config
 
-	paths       map[protocol.PathID]*path
-	closedPaths map[protocol.PathID]bool
-	pathsLock   sync.RWMutex
+	paths        map[protocol.PathID]*path
+	closedPaths  map[protocol.PathID]bool
+	pathsLock    sync.RWMutex
 
 	createPaths bool
 
@@ -71,7 +71,7 @@ type session struct {
 	remoteRTTs         map[protocol.PathID]time.Duration
 	lastPathsFrameSent time.Time
 
-	streamFramer *streamFramer
+	streamFramer          *streamFramer
 
 	flowControlManager flowcontrol.FlowControlManager
 
@@ -113,7 +113,7 @@ type session struct {
 	sessionCreationTime     time.Time
 	lastNetworkActivityTime time.Time
 
-	timer *utils.Timer
+	timer           *utils.Timer
 	// keepAlivePingSent stores whether a Ping frame was sent to the peer or not
 	// it is reset as soon as we receive a packet from the peer
 	keepAlivePingSent bool
@@ -123,8 +123,7 @@ type session struct {
 	pathManager         *pathManager
 	pathManagerLaunched bool
 
-	scheduler       *scheduler
-	streamScheduler *streamScheduler
+	scheduler           *scheduler
 }
 
 var _ Session = &session{}
@@ -175,7 +174,6 @@ var newClientSession = func(
 		version:      v,
 		config:       config,
 	}
-
 	return s.setup(nil, hostname, tlsConf, negotiatedVersions, conn, pconnMgr)
 }
 
@@ -212,7 +210,7 @@ func (s *session) setup(
 	)
 
 	s.scheduler = &scheduler{}
-	s.scheduler.setup(s.config.PathScheduler)
+	s.scheduler.setup()
 
 	if pconnMgr == nil && conn != nil {
 		// XXX ONLY VALID FOR BENCHMARK!
@@ -231,15 +229,9 @@ func (s *session) setup(
 	// XXX (QDC): use the PathID 0 as the session RTT path
 	s.rttStats = s.paths[protocol.InitialPathID].rttStats
 	s.flowControlManager = flowcontrol.NewFlowControlManager(s.connectionParameters, s.rttStats, s.remoteRTTs)
-	if s.config.StreamScheduler == "WRR" {
-		s.streamScheduler = newStreamScheduler()
-	}
-	s.streamsMap = newStreamsMap(s.newStream, s.perspective, s.connectionParameters, s.streamScheduler)
-	s.streamFramer = newStreamFramer(s.streamsMap, s.flowControlManager, s.streamScheduler)
+	s.streamsMap = newStreamsMap(s.newStream, s.perspective, s.connectionParameters)
+	s.streamFramer = newStreamFramer(s.streamsMap, s.flowControlManager)
 	s.pathTimers = make(chan *path)
-	if s.streamScheduler != nil {
-		s.streamScheduler.streamFramer = s.streamFramer
-	}
 
 	var err error
 	if s.perspective == protocol.PerspectiveServer {
@@ -432,7 +424,7 @@ runLoop:
 		}
 
 		// Check if we should send a PATHS frame (currently hardcoded at 200 ms) only when at least one stream is open (not counting streams 1 and 3 never closed...)
-		if s.handshakeComplete && s.version >= protocol.VersionMP && now.Sub(s.lastPathsFrameSent) >= 200*time.Millisecond && len(s.streamsMap.openStreams) > 2 {
+		if s.handshakeComplete && s.version >= protocol.VersionMP && now.Sub(s.lastPathsFrameSent) >= 200 * time.Millisecond && len(s.streamsMap.openStreams) > 2 {
 			s.schedulePathsFrame()
 		}
 
@@ -495,7 +487,7 @@ func (s *session) handlePacketImpl(p *receivedPacket) error {
 	s.keepAlivePingSent = false
 
 	var pth *path
-	var ok bool
+	var ok  bool
 	var err error
 
 	pth, ok = s.paths[p.publicHeader.PathID]
@@ -545,18 +537,9 @@ func (s *session) handleFrames(fs []wire.Frame, p *path) error {
 			s.pathsLock.RLock()
 			for i := 0; i < int(frame.NumPaths); i++ {
 				s.remoteRTTs[frame.PathIDs[i]] = frame.RemoteRTTs[i]
-				if frame.RemoteRTTs[i] >= 30*time.Minute {
-					// Check if path exists on this side
-					var ok bool
-					for pathID, _ := range s.paths {
-						if pathID == frame.PathIDs[i] {
-							ok = true
-						}
-					}
-					if ok {
-						// Path is potentially failed
-						s.paths[frame.PathIDs[i]].potentiallyFailed.Set(true)
-					}
+				if frame.RemoteRTTs[i] >= 30 * time.Minute {
+					// Path is potentially failed
+					s.paths[frame.PathIDs[i]].potentiallyFailed.Set(true)
 				}
 			}
 			s.pathsLock.RUnlock()
@@ -630,7 +613,6 @@ func (s *session) handleWindowUpdateFrame(frame *wire.WindowUpdateFrame) error {
 		}
 	}
 	_, err := s.flowControlManager.UpdateWindow(frame.StreamID, frame.ByteOffset)
-
 	return err
 }
 
@@ -716,7 +698,7 @@ func (s *session) closePaths() {
 		s.pathsLock.RLock()
 		for _, pth := range s.paths {
 			select {
-			case pth.closeChan <- nil:
+			case pth.closeChan<-nil:
 			default:
 				// Don't block
 			}
@@ -804,7 +786,7 @@ func (s *session) sendPackedPacket(packet *packedPacket, pth *path) error {
 	if err != nil {
 		return err
 	}
-	pth.sentPacket <- struct{}{}
+	pth.sentPacket<-struct{}{}
 
 	s.logPacket(packet, pth.pathID)
 	return pth.conn.Write(packet.raw)
@@ -869,30 +851,6 @@ func (s *session) OpenStream() (Stream, error) {
 
 func (s *session) OpenStreamSync() (Stream, error) {
 	return s.streamsMap.OpenStreamSync()
-}
-
-func (s *session) SetStreamPriority(id protocol.StreamID, priority *Priority) error {
-	if s.streamScheduler == nil {
-		return nil
-	}
-	err := s.streamScheduler.maybeSetWeight(id, priority.Weight)
-	if err != nil {
-		return err
-	}
-	err = s.streamScheduler.maybeSetParent(id, priority.Dependency, priority.Exclusive)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *session) SetStreamActive(id protocol.StreamID) error {
-	if s.streamScheduler == nil {
-		return nil
-	}
-	s.streamScheduler.setActive(id)
-	return nil
 }
 
 func (s *session) WaitUntilHandshakeComplete() error {

@@ -20,15 +20,12 @@ type streamFramer struct {
 	addAddressFrameQueue []*wire.AddAddressFrame
 	closePathFrameQueue  []*wire.ClosePathFrame
 	pathsFrame           *wire.PathsFrame
-
-	streamScheduler *streamScheduler
 }
 
-func newStreamFramer(streamsMap *streamsMap, flowControlManager flowcontrol.FlowControlManager, streamScheduler *streamScheduler) *streamFramer {
+func newStreamFramer(streamsMap *streamsMap, flowControlManager flowcontrol.FlowControlManager) *streamFramer {
 	return &streamFramer{
 		streamsMap:         streamsMap,
 		flowControlManager: flowControlManager,
-		streamScheduler:    streamScheduler,
 	}
 }
 
@@ -36,9 +33,9 @@ func (f *streamFramer) AddFrameForRetransmission(frame *wire.StreamFrame) {
 	f.retransmissionQueue = append(f.retransmissionQueue, frame)
 }
 
-func (f *streamFramer) PopStreamFrames(maxLen protocol.ByteCount, pth *path) []*wire.StreamFrame {
+func (f *streamFramer) PopStreamFrames(maxLen protocol.ByteCount) []*wire.StreamFrame {
 	fs, currentLen := f.maybePopFramesForRetransmission(maxLen)
-	return append(fs, f.maybePopNormalFrames(maxLen-currentLen, pth)...)
+	return append(fs, f.maybePopNormalFrames(maxLen-currentLen)...)
 }
 
 func (f *streamFramer) PopBlockedFrame() *wire.BlockedFrame {
@@ -165,15 +162,12 @@ func (f *streamFramer) maybePopFramesForRetransmission(maxLen protocol.ByteCount
 	return
 }
 
-func (f *streamFramer) maybePopNormalFrames(maxBytes protocol.ByteCount, pth *path) (res []*wire.StreamFrame) {
+func (f *streamFramer) maybePopNormalFrames(maxBytes protocol.ByteCount) (res []*wire.StreamFrame) {
 	frame := &wire.StreamFrame{DataLenPresent: true}
 	var currentLen protocol.ByteCount
-	/*var sent, currentLen protocol.ByteCount
-	var r []*wire.StreamFrame
-	cont := true*/
 
 	fn := func(s *stream) (bool, error) {
-		if s == nil || s.streamID == 1 { // crypto stream is handled separately
+		if s == nil || s.streamID == 1 /* crypto stream is handled separately */ {
 			return true, nil
 		}
 
@@ -199,7 +193,7 @@ func (f *streamFramer) maybePopNormalFrames(maxBytes protocol.ByteCount, pth *pa
 
 		var data []byte
 		if lenStreamData != 0 {
-			//Only getDataForWriting() if we didn't have data earlier, so that we
+			// Only getDataForWriting() if we didn't have data earlier, so that we
 			// don't send without FC approval (if a Write() raced).
 			data = s.getDataForWriting(maxLen)
 		}
@@ -238,23 +232,7 @@ func (f *streamFramer) maybePopNormalFrames(maxBytes protocol.ByteCount, pth *pa
 		return true, nil
 	}
 
-	if f.streamScheduler == nil {
-		f.streamsMap.RoundRobinIterate(fn)
-		return
-	}
-
-	var s *node
-	if f.streamScheduler.toSend == nil {
-		s = f.streamScheduler.schedule()
-	} else {
-		s = f.streamScheduler.toSend
-	}
-	if s != nil && s.stream != nil {
-		r, _, _ := f.streamScheduler.send(s.stream, maxBytes, nil)
-		if r != nil {
-			res = append(res, r)
-		}
-	}
+	f.streamsMap.RoundRobinIterate(fn)
 
 	return
 }

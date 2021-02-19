@@ -45,11 +45,10 @@ func (m *mockCongestion) RetransmissionDelay() time.Duration {
 	return defaultRTOTimeout
 }
 
-func (m *mockCongestion) GetSlowStartThreshold() protocol.ByteCount { panic("not implemented") }
-func (m *mockCongestion) SetNumEmulatedConnections(n int)           { panic("not implemented") }
-func (m *mockCongestion) OnConnectionMigration()                    { panic("not implemented") }
-func (m *mockCongestion) SetSlowStartLargeReduction(enabled bool)   { panic("not implemented") }
-func (m *mockCongestion) SmoothedRTT() time.Duration                { return defaultRTOTimeout / 10 }
+func (m *mockCongestion) SetNumEmulatedConnections(n int)         { panic("not implemented") }
+func (m *mockCongestion) OnConnectionMigration()                  { panic("not implemented") }
+func (m *mockCongestion) SetSlowStartLargeReduction(enabled bool) { panic("not implemented") }
+func (m *mockCongestion) SmoothedRTT() time.Duration              { return defaultRTOTimeout / 10 }
 
 func (m *mockCongestion) OnPacketAcked(n protocol.PacketNumber, l protocol.ByteCount, bif protocol.ByteCount) {
 	m.packetsAcked = append(m.packetsAcked, []interface{}{n, l, bif})

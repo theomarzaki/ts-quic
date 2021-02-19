@@ -116,10 +116,10 @@ sendLoop:
 func clientMain(multipath bool) error {
 	cfgClient := &quic.Config{
 		CreatePaths: multipath,
-		BindAddr:    "0.0.0.0",
 	}
 	tlsConfig := &tls.Config{InsecureSkipVerify: true}
 	fmt.Println("Trying to connect...")
+	// TODO: specify address
 	session, err := quic.DialAddr(addr, tlsConfig, cfgClient)
 	if err != nil {
 		panic(err)

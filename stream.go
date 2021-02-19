@@ -74,7 +74,6 @@ func newStream(StreamID protocol.StreamID,
 	onData func(),
 	onReset func(protocol.StreamID, protocol.ByteCount),
 	flowControlManager flowcontrol.FlowControlManager) *stream {
-
 	s := &stream{
 		onData:             onData,
 		onReset:            onReset,
@@ -229,7 +228,6 @@ func (s *stream) Write(p []byte) (int, error) {
 	if s.err != nil {
 		return len(p) - len(s.dataForWriting), s.err
 	}
-
 	return len(p), nil
 }
 

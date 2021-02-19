@@ -65,12 +65,6 @@ func (s *mockSession) Close(e error) error {
 func (s *mockSession) LocalAddr() net.Addr {
 	panic("not implemented")
 }
-func (s *mockSession) SetStreamPriority(protocol.StreamID, *quic.Priority) error {
-	panic("not implemented")
-}
-func (s *mockSession) SetStreamActive(protocol.StreamID) error {
-	panic("not implemented")
-}
 func (s *mockSession) RemoteAddr() net.Addr {
 	return &net.UDPAddr{IP: []byte{127, 0, 0, 1}, Port: 42}
 }
@@ -508,7 +502,7 @@ var _ = Describe("H2 server", func() {
 			return nil, testErr
 		}
 		fullpem, privkey := testdata.GetCertificatePaths()
-		err := ListenAndServeQUIC("", fullpem, privkey, nil, nil)
+		err := ListenAndServeQUIC("", fullpem, privkey, nil)
 		Expect(err).To(MatchError(testErr))
 	})
 })

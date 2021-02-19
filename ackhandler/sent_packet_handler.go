@@ -112,18 +112,6 @@ func NewSentPacketHandler(rttStats *congestion.RTTStats, cong congestion.SendAlg
 	}
 }
 
-func (h *sentPacketHandler) GetCongestionWindow() protocol.ByteCount {
-	return h.congestion.GetCongestionWindow()
-}
-
-func (h *sentPacketHandler) GetBytesInFlight() protocol.ByteCount {
-	return h.bytesInFlight
-}
-
-func (h *sentPacketHandler) GetSlowStartThreshold() protocol.ByteCount {
-	return h.congestion.GetSlowStartThreshold()
-}
-
 func (h *sentPacketHandler) GetStatistics() (uint64, uint64, uint64) {
 	return h.packets, h.retransmissions, h.losses
 }

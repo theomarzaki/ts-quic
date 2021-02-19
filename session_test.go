@@ -91,14 +91,11 @@ func (h *mockSentPacketHandler) ReceivedClosePath(f *wire.ClosePathFrame, withPa
 	return nil
 }
 
-func (h *mockSentPacketHandler) GetLeastUnacked() protocol.PacketNumber    { return 1 }
-func (h *mockSentPacketHandler) GetAlarmTimeout() time.Time                { return time.Now() }
-func (h *mockSentPacketHandler) OnAlarm()                                  { panic("not implemented") }
-func (h *mockSentPacketHandler) DuplicatePacket(_ *ackhandler.Packet)      { panic("not implemented") }
-func (h *mockSentPacketHandler) SendingAllowed() bool                      { return !h.congestionLimited }
-func (h *mockSentPacketHandler) GetCongestionWindow() protocol.ByteCount   { panic("not implemented") }
-func (h *mockSentPacketHandler) GetBytesInFlight() protocol.ByteCount      { panic("not implemented") }
-func (h *mockSentPacketHandler) GetSlowStartThreshold() protocol.ByteCount { panic("not implemented") }
+func (h *mockSentPacketHandler) GetLeastUnacked() protocol.PacketNumber { return 1 }
+func (h *mockSentPacketHandler) GetAlarmTimeout() time.Time             { return time.Now() }
+func (h *mockSentPacketHandler) OnAlarm()                               { panic("not implemented") }
+func (h *mockSentPacketHandler) DuplicatePacket(_ *ackhandler.Packet)   { panic("not implemented") }
+func (h *mockSentPacketHandler) SendingAllowed() bool                   { return !h.congestionLimited }
 func (h *mockSentPacketHandler) ShouldSendRetransmittablePacket() bool {
 	b := h.shouldSendRetransmittablePacket
 	h.shouldSendRetransmittablePacket = false

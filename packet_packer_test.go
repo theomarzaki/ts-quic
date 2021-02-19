@@ -67,10 +67,10 @@ var _ = Describe("Packet packer", func() {
 
 		cryptoStream = &stream{}
 
-		streamsMap := newStreamsMap(nil, protocol.PerspectiveServer, nil, nil)
+		streamsMap := newStreamsMap(nil, protocol.PerspectiveServer, nil)
 		streamsMap.streams[1] = cryptoStream
 		streamsMap.openStreams = []protocol.StreamID{1}
-		streamFramer = newStreamFramer(streamsMap, nil, nil)
+		streamFramer = newStreamFramer(streamsMap, nil)
 
 		pth = &path{
 			sentPacketHandler:     ackhandler.NewSentPacketHandler(&congestion.RTTStats{}, nil, nil),

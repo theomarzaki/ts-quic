@@ -9,10 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/net/http2"
-
 	quic "github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/internal/protocol"
+
 	"golang.org/x/net/http/httpguts"
 )
 
@@ -61,7 +59,7 @@ var _ roundTripCloser = &RoundTripper{}
 var ErrNoCachedConn = errors.New("h2quic: no cached connection was available")
 
 // RoundTripOpt is like RoundTrip, but takes options.
-func (r *RoundTripper) RoundTripOpt(req *http.Request, opt RoundTripOpt, priority *http2.PriorityParam) (*http.Response, error) {
+func (r *RoundTripper) RoundTripOpt(req *http.Request, opt RoundTripOpt) (*http.Response, error) {
 	if req.URL == nil {
 		closeRequestBody(req)
 		return nil, errors.New("quic: nil Request.URL")
@@ -101,23 +99,12 @@ func (r *RoundTripper) RoundTripOpt(req *http.Request, opt RoundTripOpt, priorit
 	if err != nil {
 		return nil, err
 	}
-
-	var c *client
-	c, ok := cl.(*client)
-	if ok {
-		return c.RoundTripPriority(req, priority)
-	}
-	return c.RoundTrip(req)
+	return cl.RoundTrip(req)
 }
 
 // RoundTrip does a round trip.
 func (r *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	return r.RoundTripOpt(req, RoundTripOpt{}, nil)
-}
-
-// RoundTripPriority is like RoundTrip, but uses http2 priority.
-func RoundTripPriority(r *RoundTripper, req *http.Request, priority *http2.PriorityParam) (*http.Response, error) {
-	return r.RoundTripOpt(req, RoundTripOpt{}, priority)
+	return r.RoundTripOpt(req, RoundTripOpt{})
 }
 
 func (r *RoundTripper) getClient(hostname string, onlyCached bool) (http.RoundTripper, error) {
@@ -152,59 +139,9 @@ func (r *RoundTripper) Close() error {
 	return nil
 }
 
-// WritePriority writes a priority frame
-func (r *RoundTripper) WritePriority(hostname string, dataStream protocol.StreamID, priority *http2.PriorityParam) error {
-	hostname = authorityAddr("https", hostname)
-	cl, err := r.getClient(hostname, false)
-	if err != nil {
-		return err
-	}
-
-	var c *client
-	c, ok := cl.(*client)
-	if ok {
-		return c.writePriority(dataStream, priority)
-	}
-	return fmt.Errorf("quic: client does not support stream priorities")
-}
-
-// OpenStream opens an idle stream
-func (r *RoundTripper) OpenStream(hostname string, priority *http2.PriorityParam) (uint32, error) {
-	hostname = authorityAddr("https", hostname)
-	cl, err := r.getClient(hostname, false)
-	if err != nil {
-		return 0, err
-	}
-
-	var c *client
-	c, ok := cl.(*client)
-	if ok {
-		dataStream, err := c.openIdleStream()
-		if err != nil {
-			return 0, err
-		}
-
-		if priority != nil {
-			err = c.writePriority(dataStream, priority)
-			if err != nil {
-				return 0, err
-			}
-		}
-
-		return uint32(dataStream), nil
-	}
-	return 0, fmt.Errorf("quic: unsupported client")
-}
-
 func closeRequestBody(req *http.Request) {
 	if req.Body != nil {
 		req.Body.Close()
-	}
-}
-
-func closeResponseBody(res *http.Response) {
-	if res.Body != nil {
-		res.Body.Close()
 	}
 }
 

@@ -1,3 +1,1 @@
-# ts-quic
-QUIC
-
+Quic Implementation
