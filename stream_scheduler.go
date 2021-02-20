@@ -995,3 +995,4 @@ func (s *session) RemoteAddr() net.Addr {
 func (s *session) GetVersion() protocol.VersionNumber {
 	return s.version
 }
+

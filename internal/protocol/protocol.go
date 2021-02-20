@@ -63,3 +63,12 @@ const ClientHelloMinimumSize = 1024
 // * one failure due to an incorrect or missing source-address token
 // * one failure due the server's certificate chain being unavailible and the server being unwilling to send it without a valid source-address token
 const MaxClientHellos = 3
+
+// DefaultPathScheduler is the default path scheduler
+const DefaultPathScheduler = "LowLatency"
+
+// DefaultStreamScheduler is the default stream scheduler
+const DefaultStreamScheduler = "RoundRobin"
+
+// DefaultStreamPriority is the default stream priority
+const DefaultStreamWeight uint8 = 15

@@ -123,6 +123,12 @@ type Config struct {
 	CacheHandshake bool
 	// Should the host try to create new paths, if possible?
 	CreatePaths bool
+	// BindAddress is the local address used to establish the connection.
+	BindAddr string
+	// Path scheduler, default LowLatency
+	PathScheduler string
+	// Stream scheduler, default Round Robin
+	StreamScheduler string
 }
 
 // A Listener for incoming QUIC connections
