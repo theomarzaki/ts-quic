@@ -5,10 +5,10 @@ import (
 
 	"github.com/lucas-clemente/quic-go/ackhandler"
 	"github.com/lucas-clemente/quic-go/congestion"
-	"github.com/lucas-clemente/quic-go/qerr"
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/lucas-clemente/quic-go/internal/wire"
+	"github.com/lucas-clemente/quic-go/qerr"
 )
 
 const (
@@ -33,7 +33,7 @@ type path struct {
 
 	potentiallyFailed utils.AtomicBool
 
-	sentPacket          chan struct{}
+	sentPacket chan struct{}
 
 	// It is now the responsibility of the path to keep its packet number
 	packetNumberGenerator *packetNumberGenerator
@@ -47,7 +47,7 @@ type path struct {
 
 	lastNetworkActivityTime time.Time
 
-	timer           *utils.Timer
+	timer *utils.Timer
 }
 
 // setup initializes values that are independent of the perspective
@@ -125,6 +125,18 @@ runLoop:
 
 func (p *path) SendingAllowed() bool {
 	return p.open.Get() && p.sentPacketHandler.SendingAllowed()
+}
+
+func (p *path) GetBytesInFlight() protocol.ByteCount {
+	return p.sentPacketHandler.GetBytesInFlight()
+}
+
+func (p *path) GetCongestionWindow() protocol.ByteCount {
+	return p.sentPacketHandler.GetCongestionWindow()
+}
+
+func (p *path) GetSlowStartThreshold() protocol.ByteCount {
+	return p.sentPacketHandler.GetSlowStartThreshold()
 }
 
 func (p *path) GetStopWaitingFrame(force bool) *wire.StopWaitingFrame {
