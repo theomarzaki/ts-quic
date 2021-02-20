@@ -20,6 +20,8 @@ type SendAlgorithm interface {
 	RetransmissionDelay() time.Duration
 	SmoothedRTT() time.Duration
 
+	GetSlowStartThreshold() protocol.ByteCount
+
 	// Experiments
 	SetSlowStartLargeReduction(enabled bool)
 }
