@@ -33,6 +33,8 @@ type streamsMap struct {
 
 	numOutgoingStreams uint32
 	numIncomingStreams uint32
+
+	streamScheduler *streamScheduler
 }
 
 type streamLambda func(*stream) (bool, error)
@@ -42,13 +44,18 @@ var (
 	errMapAccess = errors.New("streamsMap: Error accessing the streams map")
 )
 
-func newStreamsMap(newStream newStreamLambda, pers protocol.Perspective, connectionParameters handshake.ConnectionParametersManager) *streamsMap {
+func newStreamsMap(
+	newStream newStreamLambda,
+	pers protocol.Perspective,
+	connectionParameters handshake.ConnectionParametersManager,
+	streamScheduler *streamScheduler) *streamsMap {
 	sm := streamsMap{
 		perspective:          pers,
 		streams:              map[protocol.StreamID]*stream{},
 		openStreams:          make([]protocol.StreamID, 0),
 		newStream:            newStream,
 		connectionParameters: connectionParameters,
+		streamScheduler:      streamScheduler,
 	}
 	sm.nextStreamOrErrCond.L = &sm.mutex
 	sm.openStreamOrErrCond.L = &sm.mutex
@@ -288,6 +295,12 @@ func (m *streamsMap) putStream(s *stream) error {
 
 	m.streams[id] = s
 	m.openStreams = append(m.openStreams, id)
+	if m.streamScheduler != nil {
+		err := m.streamScheduler.addNode(s)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
