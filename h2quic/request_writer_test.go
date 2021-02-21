@@ -44,7 +44,7 @@ var _ = Describe("Request", func() {
 	It("writes a GET request", func() {
 		req, err := http.NewRequest("GET", "https://quic.clemente.io/index.html?foo=bar", nil)
 		Expect(err).ToNot(HaveOccurred())
-		rw.WriteRequest(req, 1337, true, false)
+		rw.WriteRequest(req, 1337, true, false, &http2.PriorityParam{Weight: 0xff})
 		headerFrame, headerFields := decode(headerStream.dataWritten.Bytes())
 		Expect(headerFrame.StreamID).To(Equal(uint32(1337)))
 		Expect(headerFrame.HasPriority()).To(BeTrue())
@@ -58,7 +58,7 @@ var _ = Describe("Request", func() {
 	It("sets the EndStream header", func() {
 		req, err := http.NewRequest("GET", "https://quic.clemente.io/", nil)
 		Expect(err).ToNot(HaveOccurred())
-		rw.WriteRequest(req, 1337, true, false)
+		rw.WriteRequest(req, 1337, true, false, &http2.PriorityParam{Weight: 0xff})
 		headerFrame, _ := decode(headerStream.dataWritten.Bytes())
 		Expect(headerFrame.StreamEnded()).To(BeTrue())
 	})
@@ -66,7 +66,7 @@ var _ = Describe("Request", func() {
 	It("doesn't set the EndStream header, if requested", func() {
 		req, err := http.NewRequest("GET", "https://quic.clemente.io/", nil)
 		Expect(err).ToNot(HaveOccurred())
-		rw.WriteRequest(req, 1337, false, false)
+		rw.WriteRequest(req, 1337, false, false, &http2.PriorityParam{Weight: 0xff})
 		headerFrame, _ := decode(headerStream.dataWritten.Bytes())
 		Expect(headerFrame.StreamEnded()).To(BeFalse())
 	})
@@ -74,7 +74,7 @@ var _ = Describe("Request", func() {
 	It("requests gzip compression, if requested", func() {
 		req, err := http.NewRequest("GET", "https://quic.clemente.io/index.html?foo=bar", nil)
 		Expect(err).ToNot(HaveOccurred())
-		rw.WriteRequest(req, 1337, true, true)
+		rw.WriteRequest(req, 1337, true, true, &http2.PriorityParam{Weight: 0xff})
 		_, headerFields := decode(headerStream.dataWritten.Bytes())
 		Expect(headerFields).To(HaveKeyWithValue("accept-encoding", "gzip"))
 	})
@@ -84,7 +84,7 @@ var _ = Describe("Request", func() {
 		form.Add("foo", "bar")
 		req, err := http.NewRequest("POST", "https://quic.clemente.io/upload.html", strings.NewReader(form.Encode()))
 		Expect(err).ToNot(HaveOccurred())
-		rw.WriteRequest(req, 5, true, false)
+		rw.WriteRequest(req, 5, true, false, &http2.PriorityParam{Weight: 0xff})
 		_, headerFields := decode(headerStream.dataWritten.Bytes())
 		Expect(headerFields).To(HaveKeyWithValue(":method", "POST"))
 		Expect(headerFields).To(HaveKey("content-length"))
@@ -106,7 +106,7 @@ var _ = Describe("Request", func() {
 		}
 		req.AddCookie(cookie1)
 		req.AddCookie(cookie2)
-		rw.WriteRequest(req, 11, true, false)
+		rw.WriteRequest(req, 11, true, false, &http2.PriorityParam{Weight: 0xff})
 		_, headerFields := decode(headerStream.dataWritten.Bytes())
 		// TODO(lclemente): Remove Or() once we drop support for Go 1.8.
 		Expect(headerFields).To(Or(

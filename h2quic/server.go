@@ -23,6 +23,8 @@ import (
 type streamCreator interface {
 	quic.Session
 	GetOrOpenStream(protocol.StreamID) (quic.Stream, error)
+	SetStreamPriority(protocol.StreamID, *quic.Priority) error
+	SetStreamActive(protocol.StreamID) error
 }
 
 type remoteCloser interface {
@@ -147,15 +149,39 @@ func (s *Server) handleHeaderStream(session streamCreator) {
 	}()
 }
 
+func (s *Server) handlePriorityFrame(session streamCreator, f *http2.PriorityFrame) error {
+	dataStream, err := session.GetOrOpenStream(protocol.StreamID(f.StreamID))
+	if err != nil {
+		return err
+	}
+	// this can happen if the client immediately closes the data stream after sending the request and the runtime processes the reset before the request
+	if dataStream == nil {
+		return nil
+	}
+
+	session.SetStreamPriority(dataStream.StreamID(), &quic.Priority{Dependency: protocol.StreamID(f.StreamDep), Weight: f.Weight})
+
+	return nil
+}
+
 func (s *Server) handleRequest(session streamCreator, headerStream quic.Stream, headerStreamMutex *sync.Mutex, hpackDecoder *hpack.Decoder, h2framer *http2.Framer) error {
 	h2frame, err := h2framer.ReadFrame()
 	if err != nil {
 		return qerr.Error(qerr.HeadersStreamDataDecompressFailure, "cannot read frame")
 	}
-	h2headersFrame, ok := h2frame.(*http2.HeadersFrame)
-	if !ok {
+	var h2headersFrame *http2.HeadersFrame
+	switch f := h2frame.(type) {
+	case *http2.PriorityFrame:
+		return s.handlePriorityFrame(session, f)
+	case *http2.HeadersFrame:
+		h2headersFrame = f
+	default:
 		return qerr.Error(qerr.InvalidHeadersStreamData, "expected a header frame")
 	}
+	/*h2headersFrame, ok := h2frame.(*http2.HeadersFrame)
+	if !ok {
+		return qerr.Error(qerr.InvalidHeadersStreamData, "expected a header frame")
+	}*/
 	if !h2headersFrame.HeadersEnded() {
 		return errors.New("http2 header continuation not implemented")
 	}
@@ -178,6 +204,7 @@ func (s *Server) handleRequest(session streamCreator, headerStream quic.Stream, 
 		utils.Infof("%s %s%s", req.Method, req.Host, req.RequestURI)
 	}
 
+	// TODO: should have a variant of GetOrOpenStream which sets priority immediately
 	dataStream, err := session.GetOrOpenStream(protocol.StreamID(h2headersFrame.StreamID))
 	if err != nil {
 		return err
@@ -186,6 +213,17 @@ func (s *Server) handleRequest(session streamCreator, headerStream quic.Stream, 
 	if dataStream == nil {
 		return nil
 	}
+
+	if h2headersFrame.HasPriority() {
+		session.SetStreamPriority(
+			dataStream.StreamID(),
+			&quic.Priority{
+				Dependency: protocol.StreamID(h2headersFrame.Priority.StreamDep),
+				Weight:     h2headersFrame.Priority.Weight,
+				Exclusive:  h2headersFrame.Priority.Exclusive,
+			})
+	}
+	session.SetStreamActive(protocol.StreamID(h2headersFrame.StreamID))
 
 	var streamEnded bool
 	if h2headersFrame.StreamEnded() {
@@ -296,12 +334,13 @@ func (s *Server) SetQuicHeaders(hdr http.Header) error {
 // ListenAndServeQUIC listens on the UDP network address addr and calls the
 // handler for HTTP/2 requests on incoming connections. http.DefaultServeMux is
 // used when handler is nil.
-func ListenAndServeQUIC(addr, certFile, keyFile string, handler http.Handler) error {
+func ListenAndServeQUIC(addr, certFile, keyFile string, handler http.Handler, quicConfig *quic.Config) error {
 	server := &Server{
 		Server: &http.Server{
 			Addr:    addr,
 			Handler: handler,
 		},
+		QuicConfig: quicConfig,
 	}
 	return server.ListenAndServeTLS(certFile, keyFile)
 }
@@ -310,7 +349,7 @@ func ListenAndServeQUIC(addr, certFile, keyFile string, handler http.Handler) er
 // connetions in parallel. It returns if one of the two returns an error.
 // http.DefaultServeMux is used when handler is nil.
 // The correct Alt-Svc headers for QUIC are set.
-func ListenAndServe(addr, certFile, keyFile string, handler http.Handler) error {
+func ListenAndServe(addr, certFile, keyFile string, handler http.Handler, quicConfig *quic.Config) error {
 	// Load certs
 	var err error
 	certs := make([]tls.Certificate, 1)
@@ -355,7 +394,8 @@ func ListenAndServe(addr, certFile, keyFile string, handler http.Handler) error 
 	}
 
 	quicServer := &Server{
-		Server: httpServer,
+		Server:     httpServer,
+		QuicConfig: quicConfig,
 	}
 
 	if handler == nil {
