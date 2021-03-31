@@ -995,3 +995,7 @@ func (s *session) RemoteAddr() net.Addr {
 func (s *session) GetVersion() protocol.VersionNumber {
 	return s.version
 }
+
+func (s *session) GetCerts() handshake.CryptoSetup{
+	return s.cryptoSetup
+}
