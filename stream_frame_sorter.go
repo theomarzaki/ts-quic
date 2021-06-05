@@ -39,7 +39,7 @@ func (s *streamFrameSorter) Push(frame *wire.StreamFrame) error {
 		return errEmptyStreamData
 	}
 
-	fmt.Println("Number of GAPS: ",s.gaps.Len())
+	fmt.Println("Number of Gaps: ",s.gaps.Len())
 
 	var wasCut bool
 	if oldFrame, ok := s.queuedFrames[frame.Offset]; ok {
