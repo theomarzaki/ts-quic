@@ -214,6 +214,8 @@ func (f *AckFrame) Write(b *bytes.Buffer, version protocol.VersionNumber) error 
 		typeByte ^= (uint8(missingSequenceNumberDeltaLen / 2))
 	}
 
+	fmt.Println("MISSING SEQUENCE NUMBER LEN: ",missingSequenceNumberDeltaLen)
+
 	if f.HasMissingRanges() {
 		typeByte |= 0x20
 	}
