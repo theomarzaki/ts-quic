@@ -154,7 +154,7 @@ func ParseAckFrame(r *bytes.Reader, version protocol.VersionNumber) (*AckFrame, 
 
 		frame.LowestAcked = frame.AckRanges[len(frame.AckRanges)-1].First
 
-		fmt.Println("Missing Ranges: ",frame.AckRanges, "Number of Gaps: "len(frame.AckRanges))
+		fmt.Println("Missing Ranges: ",frame.AckRanges, "Number of Gaps: ",len(frame.AckRanges))
 
 
 	} else {
