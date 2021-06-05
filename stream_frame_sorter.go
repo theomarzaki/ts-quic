@@ -2,6 +2,7 @@ package quic
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
@@ -149,6 +150,9 @@ func (s *streamFrameSorter) Pop() *wire.StreamFrame {
 		s.readPosition += frame.DataLen()
 		delete(s.queuedFrames, frame.Offset)
 	}
+
+	fmt.Println("Gaps: ",s.gaps.Len())
+
 	return frame
 }
 
