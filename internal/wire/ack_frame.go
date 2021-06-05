@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"time"
+	"fmt"
 
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
@@ -152,6 +153,10 @@ func ParseAckFrame(r *bytes.Reader, version protocol.VersionNumber) (*AckFrame, 
 		}
 
 		frame.LowestAcked = frame.AckRanges[len(frame.AckRanges)-1].First
+
+		fmt.Println("Missing Ranges: ",frame.AckRanges, "Number of Gaps: "len(frame.AckRanges))
+
+
 	} else {
 		if frame.LargestAcked == 0 {
 			frame.LowestAcked = 0
@@ -196,6 +201,7 @@ func ParseAckFrame(r *bytes.Reader, version protocol.VersionNumber) (*AckFrame, 
 			}
 		}
 	}
+
 	return frame, nil
 }
 
