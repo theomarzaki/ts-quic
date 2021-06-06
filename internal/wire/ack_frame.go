@@ -156,7 +156,7 @@ func ParseAckFrame(r *bytes.Reader, version protocol.VersionNumber) (*AckFrame, 
 
 		missing_packets, number_gaps := frame.GetOFOInformation()
 
-		// fmt.Println("Missing Ranges: ",frame.AckRanges, "Number of Gaps: ",len(frame.AckRanges))
+		fmt.Println("Number of Gaps: ",number_gaps, "Number of missing packets : ", missing_packets)
 
 
 	} else {
@@ -499,7 +499,7 @@ func (f *AckFrame) AcksPacket(p protocol.PacketNumber) bool {
 func (f *AckFrame) GetOFOInformation() (int,int) {
 	missing_packets := 0 
 
-	for _,ack_range := range frame.AckRanges{
+	for _,ack_range := range f.AckRanges{
 		number := ack_range.Last - ack_range.First
 		if ack_range.Last == ack_range.First {
 			number = 1
@@ -507,6 +507,5 @@ func (f *AckFrame) GetOFOInformation() (int,int) {
 		missing_packets = missing_packets + number
 	}
 
-	fmt.Println("Missing Ranges: ",frame.AckRanges, "Number of Gaps: ",len(frame.AckRanges), "Number: ",missing_packets)
 	return missing_packets,len(f.AckRanges)
 }
