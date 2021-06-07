@@ -18,6 +18,7 @@ type scheduler struct {
 }
 
 func (sch *scheduler) setup(pathScheduler string) {
+
 	sch.quotas = make(map[protocol.PathID]uint)
 
 	if pathScheduler == "RoundRobin" {

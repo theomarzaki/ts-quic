@@ -504,7 +504,7 @@ func (f *AckFrame) GetOFOInformation() (int,int) {
 		if ack_range.Last == ack_range.First {
 			number = 1
 		}
-		missing_packets = missing_packets + number
+		missing_packets = missing_packets + int(number)
 	}
 
 	return missing_packets,len(f.AckRanges)
