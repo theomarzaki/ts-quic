@@ -2,6 +2,7 @@ package quic
 
 import (
 	"time"
+	"fmt"
 
 	"github.com/lucas-clemente/quic-go/ackhandler"
 	"github.com/lucas-clemente/quic-go/internal/protocol"
@@ -761,4 +762,53 @@ func (sch *scheduler) sendPacket(s *session) error {
 			}
 		}
 	}
+}
+
+type PathInformation struct {
+	Path	int
+	SmoothedRTT	time.Duration
+	Std_Mean	time.Duration
+	LatestRTT	time.Duration
+}
+
+type CongestionInformation struct{
+	Path int
+	InflightBytes int
+	CongestionWindow int
+	SlowStartThreshold int 
+}
+
+func getOFOInformation(s *session){
+	fmt.println("OFO Info")
+}
+
+func getCongestionInformation(s *session){
+	congestion_stats := []CongestionInformation{}
+	for counter, path := range s.paths{
+			stat := CongestionInformation {
+					Path:   int(counter),
+					InflightBytes: int(path.GetBytesInFlight()),
+					CongestionWindow: int(path.GetCongestionWindow()),
+					SlowStartThreshold: int(path.GetSlowStartThreshold()),
+			}
+			congestion_stats = append(congestion_stats,stat)
+	}
+
+	fmt.Printf("%+v\n",congestion_stats)
+
+}
+
+func getPathInformation(s *session){
+	path_stats := []PathInformation{}
+	for counter, path := range s.paths{
+			stat := PathInformation {
+					Path:   int(counter),
+					SmoothedRTT: path.rttStats.SmoothedRTT(),
+					Std_Mean: path.rttStats.MeanDeviation(),
+					LatestRTT: path.rttStats.LatestRTT(),
+			}
+			path_stats = append(path_stats,stat)
+	}
+
+	fmt.Printf("%+v\n",path_stats)
 }
