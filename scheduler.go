@@ -769,6 +769,11 @@ type PathInformation struct {
 	SmoothedRTT	time.Duration
 	Std_Mean	time.Duration
 	LatestRTT	time.Duration
+	SendingAllowed bool
+	PotentiallyFailed bool
+	SendingBuffer uint64
+	BytesUntilCompletion int
+	BytesNeedToRetrans int
 }
 
 type CongestionInformation struct{
@@ -779,7 +784,7 @@ type CongestionInformation struct{
 }
 
 func getOFOInformation(s *session){
-	fmt.println("OFO Info")
+	fmt.Println("OFO Info")
 }
 
 func getCongestionInformation(s *session){
@@ -796,19 +801,57 @@ func getCongestionInformation(s *session){
 
 	fmt.Printf("%+v\n",congestion_stats)
 
+	for _, olia := range s.pathManager.oliaSenders{
+		fmt.Println("BW: ",olia.BandwidthEstimate())
+		fmt.Println("In Slow Start? : ",olia.InSlowStart(),"In Recovery: ",olia.InRecovery())
+	}
+
 }
 
 func getPathInformation(s *session){
 	path_stats := []PathInformation{}
+
+	var queueSize uint64
+	getQueueSize := func(s *stream) (bool, error) {
+		if s != nil {
+			queueSize = queueSize + uint64(s.lenOfDataForWriting())
+		}
+
+		return true, nil
+	}
+	s.streamsMap.Iterate(getQueueSize)
+
+	var retransSize uint64
+	getRetransSize := func(s *stream) (bool, error) {
+		if s != nil {
+			retransCount,_ := s.GetBytesRetrans()
+			retransSize = retransSize + uint64(retransCount)
+		}
+
+		return true, nil
+	}
+
+	s.streamsMap.Iterate(getRetransSize)
+
 	for counter, path := range s.paths{
 			stat := PathInformation {
 					Path:   int(counter),
 					SmoothedRTT: path.rttStats.SmoothedRTT(),
 					Std_Mean: path.rttStats.MeanDeviation(),
 					LatestRTT: path.rttStats.LatestRTT(),
+					SendingAllowed: path.SendingAllowed(),
+					PotentiallyFailed: path.potentiallyFailed.Get(),
+					SendingBuffer: queueSize,
+					BytesUntilCompletion: 0,
+					BytesNeedToRetrans: int(retransSize),
+					//BytesUntilCompletion: int(s.streamScheduler.bytesUntilCompletion(s.streamScheduler.schedule())),
 			}
 			path_stats = append(path_stats,stat)
 	}
 
 	fmt.Printf("%+v\n",path_stats)
+}
+
+func (sch *scheduler) getSchedulerInformation(){
+	fmt.Println("TODO")
 }
