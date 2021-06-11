@@ -439,3 +439,7 @@ func (s *stream) GetBytesSent() (protocol.ByteCount, error) {
 func (s *stream) GetBytesRetrans() (protocol.ByteCount, error) {
 	return s.flowControlManager.GetBytesRetrans(s.streamID)
 }
+
+func (s *stream) GetOutOfOrder() (int,int){
+	return s.frameQueue.GetQueuedFrames(),s.frameQueue.GetGapSize()
+}

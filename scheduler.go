@@ -774,6 +774,9 @@ type PathInformation struct {
 	SendingBuffer uint64
 	BytesUntilCompletion int
 	BytesNeedToRetrans int
+	OutOfOrderPackets int
+	OutOfOrderGaps int
+
 }
 
 type CongestionInformation struct{
@@ -833,6 +836,18 @@ func getPathInformation(s *session){
 
 	s.streamsMap.Iterate(getRetransSize)
 
+	var oooSize uint64
+	var gapSize uint64
+	getOOOSize := func(s *stream) (bool, error) {
+		if s != nil {
+			oooCount,oooGaps := s.GetBytesRetrans()
+			oooSize = oooSize + uint64(oooCount)
+			gapSize = gapSize + oooGaps
+		}
+
+		return true, nil
+	}
+
 	for counter, path := range s.paths{
 			stat := PathInformation {
 					Path:   int(counter),
@@ -844,6 +859,8 @@ func getPathInformation(s *session){
 					SendingBuffer: queueSize,
 					BytesUntilCompletion: 0,
 					BytesNeedToRetrans: int(retransSize),
+					OutOfOrderPackets: int(oooSize),
+					OutOfOrderGaps: int(gapSize),
 					//BytesUntilCompletion: int(s.streamScheduler.bytesUntilCompletion(s.streamScheduler.schedule())),
 			}
 			path_stats = append(path_stats,stat)

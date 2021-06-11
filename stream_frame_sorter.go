@@ -163,3 +163,11 @@ func (s *streamFrameSorter) Head() *wire.StreamFrame {
 	}
 	return nil
 }
+
+func (s *streamFrameSorter) GetQueuedFrames() int{
+	return len(s.queuedFrames)
+}
+
+func (s *streamFrameSorter) GetGapSize() int{
+	return len(gaps)
+}
