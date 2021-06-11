@@ -169,5 +169,5 @@ func (s *streamFrameSorter) GetQueuedFrames() int{
 }
 
 func (s *streamFrameSorter) GetGapSize() int{
-	return len(gaps)
+	return s.gaps.Len()
 }

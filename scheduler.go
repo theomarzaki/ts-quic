@@ -840,13 +840,15 @@ func getPathInformation(s *session){
 	var gapSize uint64
 	getOOOSize := func(s *stream) (bool, error) {
 		if s != nil {
-			oooCount,oooGaps := s.GetBytesRetrans()
+			oooCount,oooGaps := s.GetOutOfOrder()
 			oooSize = oooSize + uint64(oooCount)
-			gapSize = gapSize + oooGaps
+			gapSize = gapSize + uint64(oooGaps)
 		}
 
 		return true, nil
 	}
+
+	s.streamsMap.Iterate(getOOOSize)
 
 	for counter, path := range s.paths{
 			stat := PathInformation {
