@@ -165,6 +165,7 @@ func (s *streamFrameSorter) Head() *wire.StreamFrame {
 }
 
 func (s *streamFrameSorter) GetQueuedFrames() int{
+	
 	return len(s.queuedFrames)
 }
 

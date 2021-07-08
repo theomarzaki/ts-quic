@@ -496,16 +496,16 @@ func (f *AckFrame) AcksPacket(p protocol.PacketNumber) bool {
 }
 
 
-func (f *AckFrame) GetOFOInformation() (int,int) {
-	missing_packets := 0 
+// func (f *AckFrame) GetOFOInformation() (int,int) {
+// 	missing_packets := 0 
 
-	for _,ack_range := range f.AckRanges{
-		number := ack_range.Last - ack_range.First
-		if ack_range.Last == ack_range.First {
-			number = 1
-		}
-		missing_packets = missing_packets + int(number)
-	}
+// 	for _,ack_range := range f.AckRanges{
+// 		number := ack_range.Last - ack_range.First
+// 		if ack_range.Last == ack_range.First {
+// 			number = 1
+// 		}
+// 		missing_packets = missing_packets + int(number)
+// 	}
 
-	return missing_packets,len(f.AckRanges)
-}
+// 	return missing_packets,len(f.AckRanges)
+// }
